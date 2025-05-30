@@ -1,86 +1,57 @@
 require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const store = require('./models/JsonStore');
+const apiRoutes = require('./routes/api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Security Middleware
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'", "https:", "http:", "data:", "blob:"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
-            imgSrc: ["'self'", "data:", "https:", "http:", "blob:"],
-            connectSrc: ["'self'", "https:", "http:", "ws:", "wss:"],
-            fontSrc: ["'self'", "https:", "http:", "data:"],
-            objectSrc: ["'none'"],
-            mediaSrc: ["'self'", "https:", "http:", "data:", "blob:"],
-            frameSrc: ["'self'"],
-            childSrc: ["'self'", "blob:"],
-            workerSrc: ["'self'", "blob:", "data:"],
-            frameAncestors: ["'self'"],
-            formAction: ["'self'"],
-            upgradeInsecureRequests: []
-        },
-    },
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    crossOriginOpenerPolicy: false
-}));
+// Middleware
 app.use(cors());
-
-// Rate limiting
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use('/api', limiter);
-
-// Body Parser Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/api', require('./routes/api'));
-app.use('/api/admin', require('./routes/admin'));
-
-// Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
+// Servir arquivos estáticos
+app.use(express.static(path.join(__dirname)));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
-// Admin SPA fallback
-app.get('/admin/*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin', 'index.html'));
+// Rotas da API
+app.use('/api', apiRoutes);
+
+// Rota principal
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        success: false,
-        error: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message
-    });
+// Rota do painel admin
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin', 'login.html'));
 });
 
-// Initialize data store
-store.initialize().then(() => {
-    // Start server
-    const server = app.listen(PORT, () => {
-        console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+// Conectar ao MongoDB
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/calculadora')
+    .then(() => {
+        console.log('📦 Conectado ao MongoDB');
+    })
+    .catch((err) => {
+        console.error('❌ Erro ao conectar ao MongoDB:', err.message);
     });
 
-    // Handle unhandled promise rejections
-    process.on('unhandledRejection', (err) => {
-        console.error('Unhandled Promise Rejection:', err);
-        server.close(() => process.exit(1));
-    });
-}).catch(err => {
-    console.error('Failed to initialize data store:', err);
-    process.exit(1);
+// Iniciar servidor
+const server = app.listen(PORT, () => {
+    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+});
+
+// Tratamento de erro para porta em uso
+server.on('error', (e) => {
+    if (e.code === 'EADDRINUSE') {
+        console.log(`⚠️ Porta ${PORT} em uso, tentando a próxima porta...`);
+        server.close();
+        const newPort = PORT + 1;
+        app.listen(newPort, () => {
+            console.log(`🚀 Servidor rodando em http://localhost:${newPort}`);
+        });
+    }
 }); 

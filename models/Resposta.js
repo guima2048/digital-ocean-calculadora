@@ -1,40 +1,44 @@
-class Resposta {
-    constructor(data) {
-        this.estado = data.estado?.toUpperCase();
-        this.cidade = data.cidade;
-        this.respostas = {
-            idade: data.respostas?.idade,
-            escolaridade: data.respostas?.escolaridade,
-            disponibilidadeViagens: data.respostas?.disponibilidadeViagens,
-            cuidadosAparencia: data.respostas?.cuidadosAparencia,
-            situacaoProfissional: data.respostas?.situacaoProfissional
-        };
-        this.valorEstimado = data.valorEstimado;
-        this.plataformaEscolhida = data.plataformaEscolhida;
-        this.tempoPrenchimento = data.tempoPrenchimento;
-        this.data = data.data || new Date();
-    }
+const mongoose = require('mongoose');
 
-    validate() {
-        if (!this.estado) throw new Error('Estado é obrigatório');
-        if (!this.cidade) throw new Error('Cidade é obrigatória');
-        if (!this.valorEstimado) throw new Error('Valor estimado é obrigatório');
-        if (!this.plataformaEscolhida) throw new Error('Plataforma escolhida é obrigatória');
-        if (!this.tempoPrenchimento) throw new Error('Tempo de preenchimento é obrigatório');
-        return true;
+const RespostaSchema = new mongoose.Schema({
+    estado: {
+        type: String,
+        required: true,
+        uppercase: true
+    },
+    cidade: {
+        type: String,
+        required: true
+    },
+    respostas: {
+        idade: String,
+        escolaridade: String,
+        disponibilidadeViagens: String,
+        cuidadosAparencia: String,
+        situacaoProfissional: String,
+        // Outros campos conforme necessário
+    },
+    valorEstimado: {
+        type: Number,
+        required: true
+    },
+    plataformaEscolhida: {
+        type: String,
+        required: true
+    },
+    tempoPrenchimento: {
+        type: Number, // em segundos
+        required: true
+    },
+    data: {
+        type: Date,
+        default: Date.now
     }
+});
 
-    toJSON() {
-        return {
-            estado: this.estado,
-            cidade: this.cidade,
-            respostas: this.respostas,
-            valorEstimado: this.valorEstimado,
-            plataformaEscolhida: this.plataformaEscolhida,
-            tempoPrenchimento: this.tempoPrenchimento,
-            data: this.data
-        };
-    }
-}
+// Índices para consultas frequentes
+RespostaSchema.index({ cidade: 1, estado: 1 });
+RespostaSchema.index({ data: -1 });
+RespostaSchema.index({ plataformaEscolhida: 1 });
 
-module.exports = Resposta; 
+module.exports = mongoose.model('Resposta', RespostaSchema); 

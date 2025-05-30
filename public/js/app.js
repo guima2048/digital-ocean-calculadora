@@ -5,8 +5,6 @@ const cidadesList = document.getElementById('cidadesList');
 const cidadeAlerta = document.getElementById('cidadeAlerta');
 
 // Variáveis globais
-let dadosEstados = [];
-let dadosMunicipios = {};
 let cidadeAtual = null;
 
 // Função para debug
@@ -14,89 +12,39 @@ function debug(message, data) {
     console.log(`[DEBUG] ${message}:`, data);
 }
 
-// Carregar dados do JSON
-async function carregarDados() {
+// Inicializar o select de estados
+async function inicializarEstados() {
     try {
-        debug('Iniciando carregamento dos dados', null);
-        
-        // Carregar estados
-        const responseEstados = await fetch('/data/estados.json');
-        if (!responseEstados.ok) {
-            console.error('Erro ao carregar estados:', responseEstados.status, responseEstados.statusText);
-            throw new Error(`HTTP error! status: ${responseEstados.status}`);
-        }
-        const textEstados = await responseEstados.text();
-        try {
-            dadosEstados = JSON.parse(textEstados);
-        } catch (e) {
-            console.error('Erro ao fazer parse do JSON de estados:', e);
-            console.log('Conteúdo recebido:', textEstados);
-            throw e;
-        }
-        
-        // Carregar municípios
-        const responseMunicipios = await fetch('/data/municipios.json');
-        if (!responseMunicipios.ok) {
-            console.error('Erro ao carregar municípios:', responseMunicipios.status, responseMunicipios.statusText);
-            throw new Error(`HTTP error! status: ${responseMunicipios.status}`);
-        }
-        const textMunicipios = await responseMunicipios.text();
-        try {
-            dadosMunicipios = JSON.parse(textMunicipios);
-        } catch (e) {
-            console.error('Erro ao fazer parse do JSON de municípios:', e);
-            console.log('Conteúdo recebido:', textMunicipios);
-            throw e;
-        }
-        
-        debug('Estados carregados', dadosEstados);
-        debug('Municípios carregados', dadosMunicipios);
-
-        if (!dadosEstados || !dadosEstados.length) {
-            throw new Error('Dados de estados vazios');
-        }
-
-        if (!dadosMunicipios || Object.keys(dadosMunicipios).length === 0) {
-            throw new Error('Dados de municípios vazios');
-        }
-
-        popularEstados();
+        await window.estadosService.popularSelectEstados(estadoSelect);
     } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        cidadeAlerta.textContent = "Erro ao carregar dados dos municípios. Por favor, recarregue a página.";
+        console.error('Erro ao inicializar estados:', error);
+        cidadeAlerta.textContent = "Erro ao carregar estados. Por favor, recarregue a página.";
         cidadeAlerta.style.display = 'block';
         // Tentar recarregar após 5 segundos
-        setTimeout(carregarDados, 5000);
+        setTimeout(inicializarEstados, 5000);
     }
 }
 
-function popularEstados() {
-    debug('Populando select de estados', dadosEstados);
-    estadoSelect.innerHTML = '<option value="">Selecione um estado</option>';
-    dadosEstados.forEach(estado => {
-        const option = document.createElement('option');
-        option.value = estado.sigla;
-        option.textContent = `${estado.nome} (${estado.sigla})`;
-        estadoSelect.appendChild(option);
-    });
-}
-
-function filtrarCidades(termo) {
+// Event Listeners
+cidadeInput.addEventListener('input', async () => {
+    const termo = cidadeInput.value;
     const estado = estadoSelect.value;
-    debug('Filtrando cidades', { estado, termo });
-
-    if (!estado || !dadosMunicipios[estado]) {
-        debug('Estado não selecionado ou sem municípios', { estado, municipiosDisponiveis: Object.keys(dadosMunicipios) });
-        return [];
+    debug('Input da cidade alterado', { termo, estado });
+    
+    if (termo.length >= 2 && estado) {
+        try {
+            const cidadesFiltradas = await window.estadosService.filtrarMunicipios(estado, termo);
+            mostrarCidades(cidadesFiltradas);
+        } catch (error) {
+            console.error('Erro ao filtrar cidades:', error);
+            cidadeAlerta.textContent = "Erro ao carregar cidades. Por favor, tente novamente.";
+            cidadeAlerta.style.display = 'block';
+        }
+    } else {
+        cidadesList.style.display = 'none';
+        document.body.classList.remove('dropdown-open');
     }
-    
-    const cidadesFiltradas = dadosMunicipios[estado]
-        .filter(cidade => cidade.nome.toLowerCase().includes(termo.toLowerCase()))
-        .slice(0, 10);
-    
-    debug('Cidades filtradas', cidadesFiltradas);
-    return cidadesFiltradas;
-}
+});
 
 function mostrarCidades(cidades) {
     debug('Mostrando cidades', cidades);
@@ -112,9 +60,6 @@ function mostrarCidades(cidades) {
             const div = document.createElement('div');
             div.className = 'cidade-item';
             div.textContent = cidade.nome;
-            if (cidade.populacao) {
-                div.textContent += ` (${cidade.populacao.toLocaleString()} hab.)`;
-            }
             div.addEventListener('click', () => selecionarCidade(cidade));
             cidadesList.appendChild(div);
         });
@@ -130,28 +75,7 @@ function selecionarCidade(cidade) {
     cidadeInput.value = cidade.nome;
     cidadesList.style.display = 'none';
     document.body.classList.remove('dropdown-open');
-    
-    if (cidade.tipo === 'pequena' || (cidade.populacao && cidade.populacao < 100000)) {
-        cidadeAlerta.textContent = "Na sua cidade talvez não existam daddies suficientes. Mas não desanime! Muitos sugar babies encontram oportunidades viajando. E você pode ter mais de um daddy.";
-        cidadeAlerta.style.display = 'block';
-    } else {
-        cidadeAlerta.style.display = 'none';
-    }
 }
-
-// Event Listeners
-cidadeInput.addEventListener('input', () => {
-    const termo = cidadeInput.value;
-    debug('Input da cidade alterado', termo);
-    
-    if (termo.length >= 2) {
-        const cidadesFiltradas = filtrarCidades(termo);
-        mostrarCidades(cidadesFiltradas);
-    } else {
-        cidadesList.style.display = 'none';
-        document.body.classList.remove('dropdown-open');
-    }
-});
 
 // Fechar dropdown ao clicar fora
 document.addEventListener('click', (e) => {
@@ -171,7 +95,7 @@ estadoSelect.addEventListener('change', () => {
 });
 
 // Inicializar
-carregarDados();
+inicializarEstados();
 
 // Mostrar/ocultar perguntas avançadas
 const btnMostrarAvancado = document.getElementById('mostrarAvancado');

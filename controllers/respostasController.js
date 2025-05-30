@@ -1,17 +1,12 @@
 const Resposta = require('../models/Resposta');
-const DataService = require('../services/dataService');
-const respostasService = new DataService('respostas.json');
 
 // Salvar nova resposta
 exports.salvarResposta = async (req, res) => {
     try {
-        const resposta = new Resposta(req.body);
-        resposta.validate();
-        const savedResposta = await respostasService.create(resposta.toJSON());
-        
+        const resposta = await Resposta.create(req.body);
         res.status(201).json({
             success: true,
-            data: savedResposta
+            data: resposta
         });
     } catch (error) {
         res.status(400).json({
@@ -21,66 +16,32 @@ exports.salvarResposta = async (req, res) => {
     }
 };
 
-// Obter todas as respostas
-exports.obterRespostas = async (req, res) => {
-    try {
-        const respostas = await respostasService.findAll();
-        res.status(200).json({
-            success: true,
-            data: respostas
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-};
-
 // Obter estatísticas gerais
 exports.obterEstatisticas = async (req, res) => {
     try {
-        const respostas = await respostasService.findAll();
-        
-        // Calcular estatísticas
-        const totalUsuarios = respostas.length;
-        
-        // Cidades mais usadas
-        const cidadesCount = {};
-        respostas.forEach(r => {
-            const key = `${r.cidade}-${r.estado}`;
-            cidadesCount[key] = (cidadesCount[key] || 0) + 1;
-        });
-        const cidadesMaisUsadas = Object.entries(cidadesCount)
-            .map(([key, total]) => {
-                const [cidade, estado] = key.split('-');
-                return { cidade, estado, total };
-            })
-            .sort((a, b) => b.total - a.total)
-            .slice(0, 10);
-
-        // Idades mais comuns
-        const idadesCount = {};
-        respostas.forEach(r => {
-            const idade = r.respostas?.idade;
-            if (idade) idadesCount[idade] = (idadesCount[idade] || 0) + 1;
-        });
-        const idadesMaisComuns = Object.entries(idadesCount)
-            .map(([idade, total]) => ({ idade, total }))
-            .sort((a, b) => b.total - a.total)
-            .slice(0, 5);
-
-        // Plataformas mais clicadas
-        const plataformasCount = {};
-        respostas.forEach(r => {
-            if (r.plataformaEscolhida) {
-                plataformasCount[r.plataformaEscolhida] = (plataformasCount[r.plataformaEscolhida] || 0) + 1;
-            }
-        });
-        const plataformasMaisClicadas = Object.entries(plataformasCount)
-            .map(([plataforma, total]) => ({ plataforma, total }))
-            .sort((a, b) => b.total - a.total)
-            .slice(0, 5);
+        const [
+            totalUsuarios,
+            cidadesMaisUsadas,
+            idadesMaisComuns,
+            plataformasMaisClicadas
+        ] = await Promise.all([
+            Resposta.countDocuments(),
+            Resposta.aggregate([
+                { $group: { _id: { cidade: "$cidade", estado: "$estado" }, total: { $sum: 1 } } },
+                { $sort: { total: -1 } },
+                { $limit: 10 }
+            ]),
+            Resposta.aggregate([
+                { $group: { _id: "$respostas.idade", total: { $sum: 1 } } },
+                { $sort: { total: -1 } },
+                { $limit: 5 }
+            ]),
+            Resposta.aggregate([
+                { $group: { _id: "$plataformaEscolhida", total: { $sum: 1 } } },
+                { $sort: { total: -1 } },
+                { $limit: 5 }
+            ])
+        ]);
 
         res.status(200).json({
             success: true,
