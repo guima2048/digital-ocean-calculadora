@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Data files
+data/
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Windows specific
+*.bat
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test
+test_data/
+.coverage
+htmlcov/
+
+# Project specific
+data/conceitos/*
+data/relacoes/*
+data/indices/*
+!data/conceitos/.gitkeep
+!data/relacoes/.gitkeep
+!data/indices/.gitkeep 
