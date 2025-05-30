@@ -22,25 +22,51 @@ async function carregarDados() {
         // Carregar estados
         const responseEstados = await fetch('/data/estados.json');
         if (!responseEstados.ok) {
+            console.error('Erro ao carregar estados:', responseEstados.status, responseEstados.statusText);
             throw new Error(`HTTP error! status: ${responseEstados.status}`);
         }
-        dadosEstados = await responseEstados.json();
+        const textEstados = await responseEstados.text();
+        try {
+            dadosEstados = JSON.parse(textEstados);
+        } catch (e) {
+            console.error('Erro ao fazer parse do JSON de estados:', e);
+            console.log('Conteúdo recebido:', textEstados);
+            throw e;
+        }
         
         // Carregar municípios
         const responseMunicipios = await fetch('/data/municipios.json');
         if (!responseMunicipios.ok) {
+            console.error('Erro ao carregar municípios:', responseMunicipios.status, responseMunicipios.statusText);
             throw new Error(`HTTP error! status: ${responseMunicipios.status}`);
         }
-        dadosMunicipios = await responseMunicipios.json();
+        const textMunicipios = await responseMunicipios.text();
+        try {
+            dadosMunicipios = JSON.parse(textMunicipios);
+        } catch (e) {
+            console.error('Erro ao fazer parse do JSON de municípios:', e);
+            console.log('Conteúdo recebido:', textMunicipios);
+            throw e;
+        }
         
         debug('Estados carregados', dadosEstados);
         debug('Municípios carregados', dadosMunicipios);
+
+        if (!dadosEstados || !dadosEstados.length) {
+            throw new Error('Dados de estados vazios');
+        }
+
+        if (!dadosMunicipios || Object.keys(dadosMunicipios).length === 0) {
+            throw new Error('Dados de municípios vazios');
+        }
 
         popularEstados();
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
         cidadeAlerta.textContent = "Erro ao carregar dados dos municípios. Por favor, recarregue a página.";
         cidadeAlerta.style.display = 'block';
+        // Tentar recarregar após 5 segundos
+        setTimeout(carregarDados, 5000);
     }
 }
 

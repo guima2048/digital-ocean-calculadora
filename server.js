@@ -13,16 +13,25 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
-            defaultSrc: ["'self'"],
+            defaultSrc: ["'self'", "https:", "http:", "data:", "blob:"],
             scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:"],
             styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
-            imgSrc: ["'self'", "data:", "https:", "http:"],
-            connectSrc: ["'self'", "https:", "http:"],
+            imgSrc: ["'self'", "data:", "https:", "http:", "blob:"],
+            connectSrc: ["'self'", "https:", "http:", "ws:", "wss:"],
             fontSrc: ["'self'", "https:", "http:", "data:"],
+            objectSrc: ["'none'"],
+            mediaSrc: ["'self'", "https:", "http:", "data:", "blob:"],
+            frameSrc: ["'self'"],
+            childSrc: ["'self'", "blob:"],
+            workerSrc: ["'self'", "blob:", "data:"],
+            frameAncestors: ["'self'"],
+            formAction: ["'self'"],
+            upgradeInsecureRequests: []
         },
     },
     crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: false
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: false
 }));
 app.use(cors());
 
